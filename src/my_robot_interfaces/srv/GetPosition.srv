@@ -1,0 +1,9 @@
+bool get_position
+string target_color
+---
+bool found
+string color
+float64 x_position
+float64 y_position
+float64 z_position
+float64[] goal_joint_positions

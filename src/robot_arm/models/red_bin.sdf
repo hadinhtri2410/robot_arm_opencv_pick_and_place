@@ -1,0 +1,109 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="red_bin">
+    <static>true</static>
+    <link name="bin_link">
+      <collision name="bottom_collision">
+        <pose>0 0 0.0025 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.10 0.10 0.005</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="left_wall_collision">
+        <pose>-0.0475 0 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 0.10 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="right_wall_collision">
+        <pose>0.0475 0 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 0.10 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="front_wall_collision">
+        <pose>0 0.0475 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.005 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+      <collision name="back_wall_collision">
+        <pose>0 -0.0475 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.005 0.05</size>
+          </box>
+        </geometry>
+      </collision>
+
+      <visual name="bottom_visual">
+        <pose>0 0 0.0025 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.10 0.10 0.005</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.1 0.1 1.0</ambient>
+          <diffuse>0.9 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name="left_wall_visual">
+        <pose>-0.0475 0 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 0.10 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.1 0.1 1.0</ambient>
+          <diffuse>0.9 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name="right_wall_visual">
+        <pose>0.0475 0 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.005 0.10 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.1 0.1 1.0</ambient>
+          <diffuse>0.9 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name="front_wall_visual">
+        <pose>0 0.0475 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.005 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.1 0.1 1.0</ambient>
+          <diffuse>0.9 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name="back_wall_visual">
+        <pose>0 -0.0475 0.03 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.005 0.05</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.9 0.1 0.1 1.0</ambient>
+          <diffuse>0.9 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

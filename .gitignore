@@ -1,0 +1,15 @@
+# ROS 2 workspace artifacts
+build/
+install/
+log/
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated / misc
+*.gv
+*.pdf

@@ -1,0 +1,9 @@
+string[] joint_names
+float64[] start_conf
+float64[] goal_conf
+float64 step_size
+int32 max_iterations
+---
+bool success
+string message
+trajectory_msgs/JointTrajectory trajectory

@@ -15,6 +15,9 @@ def generate_launch_description():
     gazebo_launch_file = os.path.join(
         get_package_share_directory('gazebo_ros'), 'launch', 'gazebo.launch.py'
     )
+    world_file = os.path.join(
+        get_package_share_directory('robot_arm'), 'worlds', 'pick_and_place.world'
+    )
 
     moveit_config = (
         MoveItConfigsBuilder("custom_robot", package_name="ur3e_camera_moveit_config")
@@ -43,7 +46,27 @@ def generate_launch_description():
     run_pick_and_place_arg = DeclareLaunchArgument(
         'run_pick_and_place',
         default_value='true',
-        description='Whether to launch the pick_and_place_node',
+        description='Whether to launch the pick_and_place_moveit_node',
+    )
+    pre_pick_offset_arg = DeclareLaunchArgument(
+        'pre_pick_offset',
+        default_value='0.20',
+        description='Vertical offset (m) above block before descending to pick',
+    )
+    pick_height_offset_arg = DeclareLaunchArgument(
+        'pick_height_offset',
+        default_value='0.145',
+        description='Vertical offset (m) from detected block z for grasp pose',
+    )
+    place_height_offset_arg = DeclareLaunchArgument(
+        'place_height_offset',
+        default_value='0.18',
+        description='Vertical offset (m) from detected bin z for place pose',
+    )
+    gripper_close_target_arg = DeclareLaunchArgument(
+        'gripper_close_target',
+        default_value='0.02',
+        description='Target gripper finger distance (m) when closing',
     )
 
     # Include Gazebo launch file
@@ -54,7 +77,7 @@ def generate_launch_description():
             'debug': 'false',
             'gui': 'true',
             'paused': 'false',
-            #'world' : world_file
+            'world' : world_file
         }.items()
     )
 
@@ -98,7 +121,7 @@ def generate_launch_description():
     spawn_red_bin = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
-        arguments=['-entity', 'red_bin', '-file', red_bin_sdf, '-x', '-0.31', '-y', '-0.015', '-z', '0.75'],
+        arguments=['-entity', 'red_bin', '-file', red_bin_sdf, '-x', '-0.41', '-y', '-0.015', '-z', '0.75'],
         output='screen',
     )
 
@@ -112,7 +135,7 @@ def generate_launch_description():
     spawn_yellow_bin = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
-        arguments=['-entity', 'yellow_bin', '-file', yellow_bin_sdf, '-x', '-0.11', '-y', '-0.015', '-z', '0.75'],
+        arguments=['-entity', 'yellow_bin', '-file', yellow_bin_sdf, '-x', '-0.01', '-y', '-0.015', '-z', '0.75'],
         output='screen',
     )
 
@@ -211,11 +234,15 @@ def generate_launch_description():
 
     pick_and_place_node = Node(
         package="robot_arm",
-        executable="pick_and_place_node",
+        executable="pick_and_place_moveit_node",
         output="screen",
         parameters=[
             use_sim_time,
             {"target_color": LaunchConfiguration("target_color")},
+            {"pre_pick_offset": LaunchConfiguration("pre_pick_offset")},
+            {"pick_height_offset": LaunchConfiguration("pick_height_offset")},
+            {"place_height_offset": LaunchConfiguration("place_height_offset")},
+            {"gripper_close_target": LaunchConfiguration("gripper_close_target")},
         ],
         condition=IfCondition(LaunchConfiguration("run_pick_and_place")),
     )
@@ -282,6 +309,10 @@ def generate_launch_description():
     ld.add_action(z_arg)
     ld.add_action(target_color_arg)
     ld.add_action(run_pick_and_place_arg)
+    ld.add_action(pre_pick_offset_arg)
+    ld.add_action(pick_height_offset_arg)
+    ld.add_action(place_height_offset_arg)
+    ld.add_action(gripper_close_target_arg)
     ld.add_action(gazebo)
     ld.add_action(spawn_table)
     ld.add_action(robot_state_publisher)

@@ -38,7 +38,8 @@ class ObjectDetection(Node):
             f"Perception frames: base='{self.base_frame}', camera='{self.camera_frame}', table_z_in_base={self.z_table:.3f}"
         )
 
-        # Each entry: {"area": float, "x": float, "y": float, "z": float, "u": float, "v": float}
+        # Each color maps to per-type detections:
+        # {"block": {...}, "bin": {...}, "any": {...}}
         self.detected_objects = {}
 
     def camera_info_callback(self, msg: CameraInfo):
@@ -90,7 +91,7 @@ class ObjectDetection(Node):
 
         return camera_origin + scale * ray_base
 
-    def _select_block_contour(self, mask, min_area=80.0):
+    def _collect_contour_candidates(self, mask, min_area=80.0):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         candidates = []
         for cnt in contours:
@@ -101,14 +102,18 @@ class ObjectDetection(Node):
             if width < 6.0 or height < 6.0:
                 continue
             candidates.append((area, cnt))
+        return candidates
 
+    def _select_contour(self, candidates, target_type):
         if not candidates:
             return None
 
-        # Bins and blocks share color; bins are much larger. Keep the smallest
-        # significant contour to bias toward the 3cm block.
-        candidates.sort(key=lambda item: item[0])
-        return candidates[0][1]
+        # Bins and blocks share color; bins are much larger.
+        if target_type == "bin":
+            return max(candidates, key=lambda item: item[0])[1]
+
+        # "block" and "any" default to the smallest significant contour.
+        return min(candidates, key=lambda item: item[0])[1]
 
     def _compute_grasp_joint_goal(self, x, y):
         # Heuristic grasp joint target used by pick_and_place.
@@ -150,40 +155,57 @@ class ObjectDetection(Node):
         new_detections = {}
 
         for color_name, mask in masks.items():
-            contour = self._select_block_contour(mask)
-            if contour is None:
+            candidates = self._collect_contour_candidates(mask)
+            if not candidates:
                 continue
 
-            area = float(cv2.contourArea(contour))
-            rect = cv2.minAreaRect(contour)
-            (x_center, y_center), _, _ = rect
-            box = cv2.boxPoints(rect).astype(np.int32)
+            per_type = {}
+            for target_type in ("block", "bin"):
+                contour = self._select_contour(candidates, target_type)
+                if contour is None:
+                    continue
 
-            world_point = self.pixel_to_base_xy_on_table(float(x_center), float(y_center))
-            if world_point is None:
+                area = float(cv2.contourArea(contour))
+                rect = cv2.minAreaRect(contour)
+                (x_center, y_center), _, _ = rect
+                box = cv2.boxPoints(rect).astype(np.int32)
+
+                world_point = self.pixel_to_base_xy_on_table(float(x_center), float(y_center))
+                if world_point is None:
+                    continue
+
+                per_type[target_type] = {
+                    "type": target_type,
+                    "area": area,
+                    "x": float(world_point[0]),
+                    "y": float(world_point[1]),
+                    "z": float(world_point[2]),
+                    "u": float(x_center),
+                    "v": float(y_center),
+                    "goal_joint_positions": self._compute_grasp_joint_goal(
+                        float(world_point[0]), float(world_point[1])
+                    ),
+                }
+
+                # Keep visualization uncluttered: draw the block candidate.
+                if target_type == "block":
+                    cv2.polylines(cv_image, [box], True, draw_colors[color_name], 2)
+                    cv2.circle(cv_image, (int(x_center), int(y_center)), 3, draw_colors[color_name], thickness=-1)
+                    cv2.putText(
+                        cv_image,
+                        f"{color_name}-{target_type}: x:{world_point[0]:.3f} y:{world_point[1]:.3f} a:{area:.0f}",
+                        (int(x_center) + 5, int(y_center) - 5),
+                        cv2.FONT_HERSHEY_PLAIN,
+                        1,
+                        (0, 255, 0),
+                        1,
+                    )
+
+            if not per_type:
                 continue
 
-            new_detections[color_name] = {
-                "area": area,
-                "x": float(world_point[0]),
-                "y": float(world_point[1]),
-                "z": float(world_point[2]),
-                "u": float(x_center),
-                "v": float(y_center),
-                "goal_joint_positions": self._compute_grasp_joint_goal(float(world_point[0]), float(world_point[1])),
-            }
-
-            cv2.polylines(cv_image, [box], True, draw_colors[color_name], 2)
-            cv2.circle(cv_image, (int(x_center), int(y_center)), 3, draw_colors[color_name], thickness=-1)
-            cv2.putText(
-                cv_image,
-                f"{color_name}: x:{world_point[0]:.3f} y:{world_point[1]:.3f} a:{area:.0f}",
-                (int(x_center) + 5, int(y_center) - 5),
-                cv2.FONT_HERSHEY_PLAIN,
-                1,
-                (0, 255, 0),
-                1,
-            )
+            per_type["any"] = per_type.get("block", per_type.get("bin"))
+            new_detections[color_name] = per_type
 
         self.detected_objects = new_detections
         cv2.imshow("stream_camera", cv_image)
@@ -192,6 +214,7 @@ class ObjectDetection(Node):
     def stream_camera_callback(self, request, response):
         response.found = False
         response.color = ""
+        response.type = ""
         response.x_position = float("nan")
         response.y_position = float("nan")
         response.z_position = float("nan")
@@ -201,11 +224,18 @@ class ObjectDetection(Node):
             return response
 
         requested = request.target_color.strip().lower()
+        target_type = request.target_type.strip().lower() if request.target_type else "any"
+        if target_type not in ("any", "block", "bin"):
+            target_type = "any"
 
         if requested in self.detected_objects:
-            obj = self.detected_objects[requested]
+            per_type = self.detected_objects[requested]
+            obj = per_type.get(target_type, per_type.get("any"))
+            if obj is None:
+                return response
             response.found = True
             response.color = requested
+            response.type = obj["type"]
             response.x_position = obj["x"]
             response.y_position = obj["y"]
             response.z_position = obj["z"]
@@ -213,10 +243,19 @@ class ObjectDetection(Node):
             return response
 
         if requested in ("", "any") and self.detected_objects:
-            best_color = max(self.detected_objects, key=lambda name: self.detected_objects[name]["area"])
-            obj = self.detected_objects[best_color]
+            typed_candidates = []
+            for color_name, per_type in self.detected_objects.items():
+                obj = per_type.get(target_type, per_type.get("any"))
+                if obj is not None:
+                    typed_candidates.append((obj["area"], color_name, obj))
+
+            if not typed_candidates:
+                return response
+
+            _, best_color, obj = max(typed_candidates, key=lambda item: item[0])
             response.found = True
             response.color = best_color
+            response.type = obj["type"]
             response.x_position = obj["x"]
             response.y_position = obj["y"]
             response.z_position = obj["z"]

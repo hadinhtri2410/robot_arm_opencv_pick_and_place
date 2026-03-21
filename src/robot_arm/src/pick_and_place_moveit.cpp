@@ -205,6 +205,10 @@ public:
     const double eef_step = 0.005;   // 5 mm
     const double jump_threshold = 0.0;
 
+    // Let robot settle after move() before computing Cartesian path
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    move_group.setStartStateToCurrentState();
+
     double fraction = move_group.computeCartesianPath(
     waypoints, eef_step, jump_threshold, trajectory);
 
@@ -283,22 +287,16 @@ public:
       }
     }
 
-    // 2) Move above bin at transfer height.
-    geometry_msgs::msg::PoseStamped above_place_pose;
-    above_place_pose.header.frame_id = "base_link";
-    above_place_pose.pose.position.x = x;
-    above_place_pose.pose.position.y = y;
-    above_place_pose.pose.position.z = transfer_z;
-    above_place_pose.pose.orientation = desired_orientation;
-    if (!execute_pose_target(above_place_pose, "Failed to move above bin")) {
+    // 2) Move above bin at place height (skip separate descend step).
+    place_pose.pose.orientation = desired_orientation;
+    if (!execute_pose_target(place_pose, "Failed to move above bin for place")) {
       return false;
     }
 
-    // 3) Descend for place.
-    place_pose.pose.orientation = desired_orientation;
-    if (!execute_pose_target(place_pose, "Failed to move to place pose")) {
-      return false;
-    }
+    geometry_msgs::msg::PoseStamped above_place_pose;
+    above_place_pose.header.frame_id = "base_link";
+    above_place_pose.pose = place_pose.pose;
+    above_place_pose.pose.position.z = transfer_z;
 
     // Detach block before opening gripper
     const std::string block_model = target_color_ + "_block";

@@ -68,6 +68,16 @@ def generate_launch_description():
         default_value='0.02',
         description='Target gripper finger distance (m) when closing',
     )
+    num_iterations_arg = DeclareLaunchArgument(
+        'num_iterations',
+        default_value='1',
+        description='Number of pick-and-place iterations (set >1 for data collection)',
+    )
+    output_dir_arg = DeclareLaunchArgument(
+        'output_dir',
+        default_value='trajectory_data',
+        description='Directory to save trajectory data',
+    )
 
     # Include Gazebo launch file
     gazebo = IncludeLaunchDescription(
@@ -243,6 +253,8 @@ def generate_launch_description():
             {"pick_height_offset": LaunchConfiguration("pick_height_offset")},
             {"place_height_offset": LaunchConfiguration("place_height_offset")},
             {"gripper_close_target": LaunchConfiguration("gripper_close_target")},
+            {"num_iterations": LaunchConfiguration("num_iterations")},
+            {"output_dir": LaunchConfiguration("output_dir")},
         ],
         condition=IfCondition(LaunchConfiguration("run_pick_and_place")),
     )
@@ -313,6 +325,8 @@ def generate_launch_description():
     ld.add_action(pick_height_offset_arg)
     ld.add_action(place_height_offset_arg)
     ld.add_action(gripper_close_target_arg)
+    ld.add_action(num_iterations_arg)
+    ld.add_action(output_dir_arg)
     ld.add_action(gazebo)
     ld.add_action(spawn_table)
     ld.add_action(robot_state_publisher)

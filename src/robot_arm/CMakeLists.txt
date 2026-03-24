@@ -23,6 +23,7 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(my_robot_interfaces REQUIRED)
 find_package(linkattacher_msgs REQUIRED)
+find_package(gazebo_msgs REQUIRED)
 
 add_executable(pick_and_place_node src/pick_and_place.cpp)
 ament_target_dependencies(
@@ -35,10 +36,13 @@ ament_target_dependencies(
   control_msgs
   geometry_msgs
   moveit_msgs
+  moveit_ros_planning_interface
+  shape_msgs
   tf2
   tf2_ros
   tf2_geometry_msgs
   my_robot_interfaces
+  linkattacher_msgs
 )
 
 add_executable(pick_and_place_moveit_node src/pick_and_place_moveit.cpp)
@@ -54,6 +58,7 @@ ament_target_dependencies(
   tf2_geometry_msgs
   my_robot_interfaces
   linkattacher_msgs
+  gazebo_msgs
 )
 
 install(TARGETS
